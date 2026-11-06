@@ -6,7 +6,7 @@ class RandomPlayer(Player):
     @staticmethod
     def round_policy_exn(hints_remaining : int,\
                          errors_remaining : int,\
-                         other_hands : list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]],\
+                         other_hands : other_hands,\
                          discard_pile: Discard_pile,\
                          board : Board,\
                          hand_knowledge: list[Card.Knowledge],
@@ -23,7 +23,7 @@ class RandomDiscarder(Player):
     @staticmethod
     def round_policy_exn(hints_remaining : int,\
                          errors_remaining : int,\
-                         other_hands : list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]],\
+                         other_hands : other_hands,\
                          discard_pile: Discard_pile,\
                          board : Board,\
                          hand_knowledge: list[Card.Knowledge],

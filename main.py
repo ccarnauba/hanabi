@@ -12,7 +12,7 @@ STARTING_ERROR_ALLOWANCE = 3
 PlayerIndex: TypeAlias = int
 HandIndex  : TypeAlias = int
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Card:
     class Color(Enum):
         BLUE   = "blue"
@@ -90,6 +90,8 @@ class HintAction:
     hint_type : HintType
 
 type PlayerAction =  DiscardAction | PlayAction | HintAction
+
+type other_hands = list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]]
 
 class Deck:
     @staticmethod
@@ -187,7 +189,7 @@ class Player(abc.ABC):
     @abc.abstractmethod
     def round_policy_exn(hints_remaining : int,\
                          errors_remaining : int,\
-                         other_hands : list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]],\
+                         other_hands : other_hands,\
                          discard_pile: Discard_pile,\
                          board : Board,\
                          hand_knowledge: list[Card.Knowledge],\
