@@ -25,10 +25,18 @@ def unknown_card_indicies(hand_knowledge : list[Card.Knowledge]) -> list[int]:
     """
     Given a player's knowledge about their hand, which cards are fully unknown?
     """
-    unknown_indices : list[int] = []
+    return [ index for (index, knowledge)\
+             in enumerate(hand_knowledge)\
+             if knowledge.is_fully_unknown() ]
 
-    for (index, knowledge) in enumerate(hand_knowledge):
-        if knowledge.is_fully_unknown():
-            unknown_indices.append(index)
 
-    return unknown_indices
+def playable_cards_by_player(board : Board, other_hands : list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]])\
+        -> list[tuple[PlayerIndex, list[tuple[HandIndex, Card]]]]:
+    playable_card_set = playable_cards(board)
+
+    return \
+        [(player_index,
+          [(hand_index, card) for (hand_index, (card, _))
+           in enumerate(cards_and_knowledge)
+           if card in playable_card_set])
+         for (player_index, cards_and_knowledge) in other_hands]
