@@ -24,4 +24,4 @@ def test_harness(player_list : list[Player]):
     plt.show() #pyright: ignore[reportUnknownMemberType]
 
 
-test_harness([random_player.RandomDiscarder() for _ in range(4)])
+test_harness([random_player.RandomPlayer () for _ in range(4)])

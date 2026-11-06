@@ -28,6 +28,24 @@ class Card:
         FOUR  = 4
         FIVE  = 5
 
+        def next_number(self) -> Card.Number | None:
+            match self:
+                case Card.Number.ONE:
+                    return Card.Number.TWO
+
+                case Card.Number.TWO:
+                    return Card.Number.THREE
+
+                case Card.Number.THREE:
+                    return Card.Number.FOUR
+
+                case Card.Number.FOUR:
+                    return Card.Number.FIVE
+
+                case Card.Number.FIVE:
+                    return None
+
+
         def frequency(self) -> int:
             match self:
                 case Card.Number.ONE:
@@ -41,6 +59,9 @@ class Card:
     class Knowledge:
         known_color  : Card.Color  | None = None
         known_number : Card.Number | None = None
+
+        def is_fully_unknown(self) -> bool:
+            return not self.known_color and not self.known_number
 
     color  : Card.Color
     number : Card.Number
