@@ -1,11 +1,10 @@
-from collections import deque, defaultdict
-from dataclasses import dataclass
-from enum import IntEnum, Enum
-from typing import TypeAlias, assert_never
-
 import abc
+from collections import defaultdict, deque
+from dataclasses import dataclass
+from enum import Enum, IntEnum
 import random
 import sys
+from typing import TypeAlias, assert_never
 
 STARTING_HINT_COUNT      = 8
 STARTING_ERROR_ALLOWANCE = 4
@@ -73,8 +72,8 @@ type PlayerAction =  DiscardAction | PlayAction | HintAction
 
 class Deck:
     @staticmethod
-    def __create_deck():
-        deck = deque()
+    def _create_deck() -> deque[Card]:
+        deck : deque[Card] = deque()
         for color in list(Card.Color):
             for number in list(Card.Number):
                 for _ in range(number.frequency()):
@@ -83,11 +82,14 @@ class Deck:
         return deck
 
     def __init__(self):
-        deck = Deck.__create_deck()
+        deck = Deck._create_deck()
         random.shuffle(deck)
-        self.deck = deck
+        self.deck : deque[Card] = deck
 
-    def __draw_card(self):
+    def draw_card(self) -> None | Card:
+        if not self.deck:
+            return None
+
         return self.deck.pop()
 
 
@@ -100,7 +102,7 @@ class Discard_pile:
 
         self.pile = pile
 
-    def __add_card(self, card: Card) -> None:
+    def add_card(self, card: Card) -> None:
         self.pile[card.color].append(card)
 
     def peek(self) -> defaultdict[Card.Color, deque[Card]]:
@@ -108,17 +110,17 @@ class Discard_pile:
 
 class Board:
     def __init__(self) -> None:
-        board : defaultdict[Card.Color, deque[Card]] = defaultdict()
-        self.board = board
+        board : dict[Card.Color, list[Card]] = {c: [] for c in Card.Color}
+        self.board :dict[Card.Color, list[Card]] = board
 
-    def __is_won(self) -> bool:
+    def is_won(self) -> bool:
         for cards in self.board.values():
             if len(cards) != 5:
                 return False
 
         return True
 
-    def __score(self) -> int:
+    def score(self) -> int:
         count = 0
 
         for cards in self.board.values():
@@ -127,32 +129,36 @@ class Board:
         return count
 
 
-    def __play_card(self, card : Card) -> bool:
+    def play_card(self, card : Card) -> bool:
         """Returns false if card was not played due to breaking the rules of
         the game
         """
-        if (not self.board[card.color]) and card.number != Card.Number.ONE:
-            return False
+        if (not self.board[card.color]):
+            if(card.number == Card.Number.ONE):
+                self.board[card.color].append(card)
+                return True
+            else:
+                return False
+        else:
+            if self.board[card.color][-1].number != (card.number - 1):
+                return False
+            else:
+                self.board[card.color].append(card)
+                return True
 
-        if self.board[card.color][-1].Number != (card.number - 1):
-            return False
 
-        self.board[card.color].append(card)
-        return True
-
-    def peek(self) -> defaultdict[Card.Color, deque[Card]]:
+    def peek(self) -> dict[Card.Color, list[Card]]:
         return self.board
 
-class Player:
+class Player(abc.ABC):
     def __init__(self):
-        self.__hand: list[tuple[Card, Card.Knowledge]] = list()
+        self.hand: list[tuple[Card, Card.Knowledge]] = list()
 
-    def __draw_card(self, deck):
-        new_card = deck.__draw_card()
-        self.__hand.append((new_card, Card.Knowledge()))
+    def add_card_to_hand(self, new_card : Card):
+        self.hand.append((new_card, Card.Knowledge()))
 
-    def __pop_card(self, index : HandIndex):
-        (card, _) = self.__hand.pop(index)
+    def pop_card(self, index : HandIndex) -> Card:
+        (card, _) = self.hand.pop(index)
         return card
 
     # Static method to avoid leaking player hand to policy.
@@ -180,8 +186,13 @@ class Player:
 
         """
 
+@dataclass
+class GameInfo:
+    score       : int
+    game_length : int
+
 class Game:
-    def __init__(self, player_list : list[Player], verbose = False, log_file = None):
+    def __init__(self, player_list : list[Player], verbose : bool = False, log_file: str | None= None):
         match log_file:
             case None:
                 self.log_file = sys.stdout
@@ -190,16 +201,19 @@ class Game:
 
         # WLOG start at player zero
         self.player_index              = 0
+        self.game_length               = 0
         self.player_list               = player_list
         self.hints_remaining           = STARTING_HINT_COUNT
         self.error_allowance_remaining = STARTING_ERROR_ALLOWANCE
         self.discard_pile              = Discard_pile()
         self.board                     = Board()
         self.deck                      = Deck()
+        self.player_to_draw_last_card  = None
         self.verbose                   = verbose
 
-    def __describe_round(self, player_action : PlayerAction) -> None:
+    def _describe_round(self, player_action : PlayerAction) -> None:
         log_line = None
+
         match player_action:
             case DiscardAction(i):
                 log_line = f"Player {self.player_index} discarded card {i}"
@@ -215,70 +229,88 @@ class Game:
 
         self.log_file.write(log_line)
 
-    def __discard(self, discard_index):
+    def _draw_card(self, player : Player) -> None:
+        new_card = self.deck.draw_card()
+
+        if not self.player_to_draw_last_card and not new_card:
+            self.player_to_draw_last_card = self.player_index
+
+        if new_card:
+            player.add_card_to_hand(new_card)
+
+    def _discard(self, discard_index : HandIndex):
         player = self.player_list[self.player_index]
         self.hints_remaining = max(self.hints_remaining + 1, STARTING_HINT_COUNT)
-        discarded_card = player.__pop_card(discard_index)
-        self.discard_pile.__add_card(discarded_card)
-        player.__draw_card(self.deck)
+        discarded_card = player.pop_card(discard_index)
+        self._draw_card(player)
+        self.discard_pile.add_card(discarded_card)
 
-    def __play(self, play_index):
+    def _play(self, play_index : HandIndex) -> None:
         player = self.player_list[self.player_index]
-        card_to_play = player.__pop_card(play_index)
-        player.__draw_card(self.deck)
+        card_to_play = player.pop_card(play_index)
+        self._draw_card(player)
 
-        if not self.board.__play_card(play_index):
-            self.discard_pile.__add_card(card_to_play)
+        if not self.board.play_card(card_to_play):
+            self.discard_pile.add_card(card_to_play)
             self.error_allowance_remaining -= 1
 
-
-    def __hint(self, player_index: int, hint_type: HintType):
-        hand_to_hint = self.player_list[player_index].__hand
+    def _hint(self, player_index: int, hint_type: HintType):
+        hand_to_hint = self.player_list[player_index].hand
 
         match hint_type:
             case ColorHint(color):
-                for (i, (card, card_info)) in enumerate(hand_to_hint):
-                    if card.Color == color:
+                for (card, card_info) in hand_to_hint:
+                    if card.color == color:
                         card_info.__setattr__("known_color", color)
 
             case NumberHint(num):
-                for (i, (card, card_info)) in enumerate(hand_to_hint):
-                    if card.Number == num:
+                for (card, card_info) in hand_to_hint:
+                    if card.number == num:
                         card_info.__setattr__("known_number", num)
 
-    def __handle_player_action(self, player_action : PlayerAction) -> None:
+    def _handle_player_action(self, player_action : PlayerAction) -> None:
         match player_action:
             case DiscardAction(i):
-                self.__discard(i)
+                self._discard(i)
             case PlayAction(i):
-                self.__play(i)
-
+                self._play(i)
             case HintAction(i, hint):
-                self.__hint(i, hint)
+                self._hint(i, hint)
 
             case _:
                 assert_never(player_action)
 
-    def __get_other_hands(self) ->  list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]]:
-        return [(index, player.__hand) for (index, player)\
+    def _get_other_hands(self) ->  list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]]:
+        return [(index, player.hand ) for (index, player)\
                 in enumerate(self.player_list)\
                 if index != self.player_index]
 
-    def __initialize_players(self):
+
+    def _initialize_players(self):
         num_players = len(self.player_list)
         assert(num_players >= 2)
         cards_per_player = 4 if num_players > 3 else 5
 
         for player in self.player_list:
             for _ in range(cards_per_player):
-                player.__draw_card(self.deck)
+                new_card = self.deck.draw_card()
+                match new_card:
+                    case None:
+                        raise ValueError("Unexpected deck smaller than starting hand")
+                    case card:
+                        player.add_card_to_hand(card)
 
-    def play(self) -> int:
-        while(self.error_allowance_remaining or not self.board.__is_won()):
+    def play(self) -> GameInfo:
+        self._initialize_players()
+        while(self.error_allowance_remaining and not self.board.is_won()):
+
+            if self.player_index == self.player_to_draw_last_card:
+                break
+
             curr_player    = self.player_list[self.player_index]
-            other_hands    = self.__get_other_hands()
+            other_hands    = self._get_other_hands()
 
-            hand_knowledge = [ knowledge for (_, knowledge) in curr_player.__hand ]
+            hand_knowledge = [ knowledge for (_, knowledge) in curr_player.hand ]
 
             player_action = curr_player.round_policy_exn(self.hints_remaining,\
                                                           self.error_allowance_remaining,\
@@ -287,9 +319,11 @@ class Game:
                                                           self.board,\
                                                           hand_knowledge)
             if self.verbose:
-                self.__describe_round(player_action)
+                self._describe_round(player_action)
 
-            self.__handle_player_action(player_action)
+            self._handle_player_action(player_action)
+
             self.player_index = (self.player_index + 1) % len(self.player_list)
+            self.game_length += 1
 
-        return self.board.__score()
+        return GameInfo(self.board.score(), self.game_length)
