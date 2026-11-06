@@ -1,1 +1,6 @@
-Trying to understand the hanabi meta!
+Create a gameplay loop for hanabi.
+
+The core game mechanics live in main. To use this you should define a subclass
+of Player and create a list of Player objects. That list should be passed in as
+an argument to the Game object initializer which exposes a single function play.
+Many different games can be played at the same time.

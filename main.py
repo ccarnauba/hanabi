@@ -147,6 +147,14 @@ class Player:
     def __init__(self):
         self.__hand: list[tuple[Card, Card.Knowledge]] = list()
 
+    def __draw_card(self, deck):
+        new_card = deck.__draw_card()
+        self.__hand.append((new_card, Card.Knowledge()))
+
+    def __pop_card(self, index : HandIndex):
+        (card, _) = self.__hand.pop(index)
+        return card
+
     # Static method to avoid leaking player hand to policy.
     @staticmethod
     @abc.abstractmethod
@@ -208,20 +216,21 @@ class Game:
         self.log_file.write(log_line)
 
     def __discard(self, discard_index):
-        player_hand = self.player_list[self.player_index].__hand
+        player = self.player_list[self.player_index]
         self.hints_remaining = max(self.hints_remaining + 1, STARTING_HINT_COUNT)
-        (discarded_card, _) = player_hand.pop(discard_index)
+        discarded_card = player.__pop_card(discard_index)
         self.discard_pile.__add_card(discarded_card)
-        new_card = self.deck.__draw_card()
-        player_hand.append((new_card, Card.Knowledge()))
+        player.__draw_card(self.deck)
 
     def __play(self, play_index):
-        player_hand = self.player_list[self.player_index].__hand
-        (card_to_play, _) = player_hand.pop(play_index)
+        player = self.player_list[self.player_index]
+        card_to_play = player.__pop_card(play_index)
+        player.__draw_card(self.deck)
 
         if not self.board.__play_card(play_index):
             self.discard_pile.__add_card(card_to_play)
             self.error_allowance_remaining -= 1
+
 
     def __hint(self, player_index: int, hint_type: HintType):
         hand_to_hint = self.player_list[player_index].__hand
@@ -255,8 +264,16 @@ class Game:
                 in enumerate(self.player_list)\
                 if index != self.player_index]
 
-    def play(self) -> int:
+    def __initialize_players(self):
+        num_players = len(self.player_list)
+        assert(num_players >= 2)
+        cards_per_player = 4 if num_players > 3 else 5
 
+        for player in self.player_list:
+            for _ in range(cards_per_player):
+                player.__draw_card(self.deck)
+
+    def play(self) -> int:
         while(self.error_allowance_remaining or not self.board.__is_won()):
             curr_player    = self.player_list[self.player_index]
             other_hands    = self.__get_other_hands()
