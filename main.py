@@ -7,7 +7,7 @@ import sys
 from typing import TypeAlias, assert_never
 
 STARTING_HINT_COUNT      = 8
-STARTING_ERROR_ALLOWANCE = 4
+STARTING_ERROR_ALLOWANCE = 3
 
 PlayerIndex: TypeAlias = int
 HandIndex  : TypeAlias = int
@@ -274,6 +274,11 @@ class Game:
         if not self.board.play_card(card_to_play):
             self.discard_pile.add_card(card_to_play)
             self.error_allowance_remaining -= 1
+        else:
+            # If play is valid and completes a set, players get another hint back!
+            if card_to_play.number == Card.Number.FIVE:
+                self.hints_remaining = (self.hints_remaining + 1) % STARTING_HINT_COUNT
+
 
     def _hint(self, player_index: int, hint_type: HintType):
         hand_to_hint = self.player_list[player_index].hand
@@ -323,7 +328,7 @@ class Game:
 
     def play(self) -> GameInfo:
         self._initialize_players()
-        while(self.error_allowance_remaining and not self.board.is_won()):
+        while(self.error_allowance_remaining > 0 and not self.board.is_won()):
 
             if self.player_index == self.player_to_draw_last_card:
                 break
