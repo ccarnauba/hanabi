@@ -285,7 +285,7 @@ class Game:
 
     def _hint(self, player_index: int, hint_type: HintType):
         hand_to_hint = self.player_list[player_index].hand
-
+        self.hints_remaining -= 1
         match hint_type:
             case ColorHint(color):
                 for (card, card_info) in hand_to_hint:
