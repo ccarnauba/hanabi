@@ -9,7 +9,8 @@ class RandomPlayer(Player):
                          other_hands : list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]],\
                          discard_pile: Discard_pile,\
                          board : Board,\
-                         hand_knowledge: list[Card.Knowledge]) -> PlayerAction:
+                         hand_knowledge: list[Card.Knowledge],
+                         cards_remaining_in_deck : int) -> PlayerAction:
 
         num_of_cards = len(hand_knowledge)
         rand_card = random.randrange(0, num_of_cards, 1)
@@ -25,7 +26,8 @@ class RandomDiscarder(Player):
                          other_hands : list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]],\
                          discard_pile: Discard_pile,\
                          board : Board,\
-                         hand_knowledge: list[Card.Knowledge]) -> PlayerAction:
+                         hand_knowledge: list[Card.Knowledge],
+                         cards_remaining_in_deck: int) -> PlayerAction:
 
         num_of_cards = len(hand_knowledge)
         rand_card = random.randrange(0, num_of_cards, 1)

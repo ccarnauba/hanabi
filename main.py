@@ -190,7 +190,8 @@ class Player(abc.ABC):
                          other_hands : list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]],\
                          discard_pile: Discard_pile,\
                          board : Board,\
-                         hand_knowledge: list[Card.Knowledge]) -> PlayerAction:
+                         hand_knowledge: list[Card.Knowledge],\
+                         cards_remaining_in_deck: int) -> PlayerAction:
         """- hints_remaining: How many hints do the players have collectively?
         - errors_remaining: How many errors are remaining?
         - other_hands: a list of player hands and what they know about their
@@ -343,7 +344,8 @@ class Game:
                                                           other_hands,\
                                                           self.discard_pile,\
                                                           self.board,\
-                                                          hand_knowledge)
+                                                          hand_knowledge, \
+                                                          len(self.deck.deck))
             if self.verbose:
                 self._describe_round(player_action)
 
