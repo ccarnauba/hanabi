@@ -20,6 +20,11 @@ def test_harness(player_list : list[Player]):
     results = [Game(player_list).play() for _ in range(DEFAULT_TEST_ITERATIONS) if print((game_iteration := game_iteration + 1)) or True]
     fig, (score_hist, rounds_hist) = plt.subplots(nrows = 2)
 
+    scores = [game_info.score for game_info in results]
+    game_lengths = [game_info.game_length for game_info in results]
+    score_summary = summarize("Score", scores)
+    rounds_summary = summarize("Rounds", game_lengths)
+
     rounds_hist.hist(game_lengths)
     rounds_hist.set_title(f"Rounds hist\n{rounds_summary}")
     rounds_hist.set_xlabel("Rounds")
