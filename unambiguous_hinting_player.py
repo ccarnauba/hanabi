@@ -3,18 +3,18 @@ import random
 import utils
 
 class Unambiguous_Hinting_Player(Player):
-    """A player that will:
+    """A player with the following decision tree:
 
     1. If they know nothing about their hand, and there are hints to give they will:
 
-    1.1 If there is a visible card that is playable and has an unabmiguous
+    1.1 If there is a visible card that is playable and has an unambiguous
     hint, hint at that card
 
     1.2 If there aren't any visible playable cards, discard a knowledge-free card at random.
 
     2. If they know something, assume that card is playable.
-    3. If there are no hints to give, discard at random.
 
+    3. If there are no hints to give, discard at random.
     """
     @staticmethod
     def round_policy_exn(hints_remaining : int,\
@@ -46,23 +46,25 @@ class Unambiguous_Hinting_Player(Player):
         playable_cards_touched_by_unambiguous_hints =\
             [ (player, hint, card) for (player, hint, cards)\
               in cards_touched_by_unambiguous_hints\
-              for (card, _) in cards\
-              if card in playable_cards]
+              for (card, knowledge) in cards\
+              if (card in playable_cards) and knowledge.is_fully_unknown()]
 
 
         match cards_we_know_about:
+
+            # If we know anything, then play that card.
+            case [card] | [card, *_]:
+                return PlayAction(card)
+
             # If we know nothing, then either give a hint, or discard a card.
-            case []:
+            case _:
                 match hints_remaining:
                     case 0:
                         return DiscardAction(0)
                     case _:
                         match playable_cards_touched_by_unambiguous_hints:
-                            case []:
-                                return DiscardAction(0)
-                            case cards:
-                                return HintAction(cards[0][0], cards[0][1])
+                            case [(index, hint_type, _)] | [(index, hint_type, _), *_]:
+                                return HintAction(index, hint_type)
 
-            # If we know anything, then play that card.
-            case cards:
-                return PlayAction(cards[0])
+                            case _:
+                                return DiscardAction(0)

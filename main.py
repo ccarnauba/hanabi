@@ -1,6 +1,7 @@
 import abc
 from collections import defaultdict, deque
 from dataclasses import dataclass
+import dataclasses
 from enum import Enum, IntEnum
 import random
 import sys
@@ -55,7 +56,7 @@ class Card:
                 case Card.Number.FIVE:
                     return 1
 
-    @dataclass
+    @dataclass(frozen=True)
     class Knowledge:
         known_color  : Card.Color  | None = None
         known_number : Card.Number | None = None
@@ -261,7 +262,7 @@ class Game:
     def _draw_card(self, player : Player) -> None:
         new_card = self.deck.draw_card()
 
-        if not self.player_to_draw_last_card and not new_card:
+        if self.player_to_draw_last_card == None and len(self.deck.deck) == 0:
             self.player_to_draw_last_card = self.player_index
 
         if new_card:
@@ -269,7 +270,7 @@ class Game:
 
     def _discard(self, discard_index : HandIndex):
         player = self.player_list[self.player_index]
-        self.hints_remaining = max(self.hints_remaining + 1, STARTING_HINT_COUNT)
+        self.hints_remaining = min(self.hints_remaining + 1, STARTING_HINT_COUNT)
         discarded_card = player.pop_card(discard_index)
         self._draw_card(player)
         self.discard_pile.add_card(discarded_card)
@@ -285,23 +286,26 @@ class Game:
         else:
             # If play is valid and completes a set, players get another hint back!
             if card_to_play.number == Card.Number.FIVE:
-                self.hints_remaining = (self.hints_remaining + 1) % STARTING_HINT_COUNT
+                self.hints_remaining = min(self.hints_remaining + 1, STARTING_HINT_COUNT)
 
 
-    def _hint(self, player_index: int, hint_type: HintType):
-        hand_to_hint = self.player_list[player_index].hand
+    def _hint(self, player_index_to_hint: int, hint_type: HintType):
+        assert(self.hints_remaining > 0)
+        assert(self.player_index != player_index_to_hint)
+
+        hand_to_hint = self.player_list[player_index_to_hint].hand
         self.hints_remaining -= 1
 
         match hint_type:
             case ColorHint(color):
-                for (card, card_info) in hand_to_hint:
+                for hand_index, (card, card_info) in enumerate(hand_to_hint):
                     if card.color == color:
-                        card_info.__setattr__("known_color", color)
+                        hand_to_hint[hand_index] = (card, dataclasses.replace(card_info, known_color=color))
 
             case NumberHint(num):
-                for (card, card_info) in hand_to_hint:
+                for hand_index, (card, card_info) in enumerate(hand_to_hint):
                     if card.number == num:
-                        card_info.__setattr__("known_number", num)
+                        hand_to_hint[hand_index] = (card, dataclasses.replace(card_info, known_number=num))
 
     def _handle_player_action(self, player_action : PlayerAction) -> None:
         match player_action:
