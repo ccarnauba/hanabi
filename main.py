@@ -12,7 +12,7 @@ STARTING_ERROR_ALLOWANCE = 3
 PlayerIndex: TypeAlias = int
 HandIndex  : TypeAlias = int
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Card:
     class Color(Enum):
         BLUE   = "blue"
@@ -91,6 +91,8 @@ class HintAction:
 
 type PlayerAction =  DiscardAction | PlayAction | HintAction
 
+type other_hands = list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]]
+
 class Deck:
     @staticmethod
     def _create_deck() -> deque[Card]:
@@ -102,8 +104,9 @@ class Deck:
                     deck.append(card)
         return deck
 
-    def __init__(self):
+    def __init__(self, random_seed : int | None):
         deck = Deck._create_deck()
+        random.seed(random_seed)
         random.shuffle(deck)
         self.deck : deque[Card] = deck
 
@@ -187,10 +190,11 @@ class Player(abc.ABC):
     @abc.abstractmethod
     def round_policy_exn(hints_remaining : int,\
                          errors_remaining : int,\
-                         other_hands : list[tuple[PlayerIndex, list[tuple[Card, Card.Knowledge]]]],\
+                         other_hands : other_hands,\
                          discard_pile: Discard_pile,\
                          board : Board,\
-                         hand_knowledge: list[Card.Knowledge]) -> PlayerAction:
+                         hand_knowledge: list[Card.Knowledge],\
+                         cards_remaining_in_deck: int) -> PlayerAction:
         """- hints_remaining: How many hints do the players have collectively?
         - errors_remaining: How many errors are remaining?
         - other_hands: a list of player hands and what they know about their
@@ -213,7 +217,7 @@ class GameInfo:
     game_length : int
 
 class Game:
-    def __init__(self, player_list : list[Player], verbose : bool = False, log_file: str | None= None):
+    def __init__(self, player_list : list[Player], verbose : bool = False, log_file: str | None = None, random_seed : int | None = None):
         match log_file:
             case None:
                 self.log_file = sys.stdout
@@ -228,27 +232,31 @@ class Game:
         self.error_allowance_remaining = STARTING_ERROR_ALLOWANCE
         self.discard_pile              = Discard_pile()
         self.board                     = Board()
-        self.deck                      = Deck()
+        self.deck                      = Deck(random_seed)
         self.player_to_draw_last_card  = None
         self.verbose                   = verbose
 
-    def _describe_round(self, player_action : PlayerAction) -> None:
+    def _describe_round(self, player_action : PlayerAction, other_hands : other_hands) -> None:
         log_line = None
-
+        player = self.player_list[self.player_index]
         match player_action:
             case DiscardAction(i):
-                log_line = f"Player {self.player_index} discarded card {i}"
+                log_line = f"Player {self.player_index} discarded card {i}, corresponding to {player.hand[i]}"
             case PlayAction(i):
-                log_line = f"Player {self.player_index} discarded card {i}"
+                log_line = f"Player {self.player_index} played card {i}, corresponding to {player.hand[i]}"
             case HintAction(i, hint):
-
+                hinted_player_knowledge = [knowledge for (player_index, cards_and_knowledge)\
+                                           in other_hands for (_, knowledge)\
+                                           in cards_and_knowledge if player_index == i]
                 match hint:
                     case ColorHint(color):
-                        log_line = f"Player {self.player_index} hinted player {i} about the color {color}"
+                        log_line = f"Player {self.player_index} hinted player {i} about the color {color}. Player {i} now knows {hinted_player_knowledge}"
                     case NumberHint(num):
-                        log_line = f"Player {self.player_index} hinted player {i} about the number {num}"
+                        log_line = f"Player {self.player_index} hinted player {i} about the number {num}. Player {i} now knows {hinted_player_knowledge}"
 
         self.log_file.write(log_line)
+        self.log_file.write('\n')
+        self.log_file.write('\n')
 
     def _draw_card(self, player : Player) -> None:
         new_card = self.deck.draw_card()
@@ -282,6 +290,7 @@ class Game:
 
     def _hint(self, player_index: int, hint_type: HintType):
         hand_to_hint = self.player_list[player_index].hand
+        self.hints_remaining -= 1
 
         match hint_type:
             case ColorHint(color):
@@ -343,11 +352,14 @@ class Game:
                                                           other_hands,\
                                                           self.discard_pile,\
                                                           self.board,\
-                                                          hand_knowledge)
-            if self.verbose:
-                self._describe_round(player_action)
+                                                          hand_knowledge, \
+                                                          len(self.deck.deck))
 
             self._handle_player_action(player_action)
+
+            if self.verbose:
+                self._describe_round(player_action, other_hands)
+
 
             self.player_index = (self.player_index + 1) % len(self.player_list)
             self.game_length += 1
