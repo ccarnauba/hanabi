@@ -1,12 +1,12 @@
 from main import *
 import matplotlib.pyplot as plt
-import random_player
+import better_player
 
-DEFAULT_TEST_ITERATIONS = 1000
+DEFAULT_TEST_ITERATIONS = 10
 
 def test_harness(player_list : list[Player]):
-    results = [Game(player_list).play() for _ in range(DEFAULT_TEST_ITERATIONS)]
-
+    game_iteration = 0
+    results = [Game(player_list).play() for _ in range(DEFAULT_TEST_ITERATIONS) if print((game_iteration := game_iteration + 1)) or True]
     fig, (score_hist, rounds_hist) = plt.subplots(nrows = 2)
 
     rounds_hist.hist([game_info.game_length for game_info in results] ) #pyright: ignore[reportUnknownMemberType]
@@ -24,4 +24,4 @@ def test_harness(player_list : list[Player]):
     plt.show() #pyright: ignore[reportUnknownMemberType]
 
 
-test_harness([random_player.RandomPlayer () for _ in range(4)])
+test_harness([better_player.BetterPlayer() for _ in range(4)])

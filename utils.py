@@ -80,7 +80,8 @@ def all_hints() -> list[HintType]:
     return color_hints + number_hints
 
 
-def unambious_hints(other_hands : other_hands) -> list[tuple[PlayerIndex, list[HintType]]]:
+def unambiguous_hints(other_hands : other_hands) -> list[tuple[PlayerIndex, list[HintType]]]:
+
     all_possible_hints = all_hints()
 
     other_hands_knowlege_free = [(player_index,
@@ -90,18 +91,21 @@ def unambious_hints(other_hands : other_hands) -> list[tuple[PlayerIndex, list[H
         [(player_index,
           [hint for hint
            in all_possible_hints
-           if len(cards_revealed_by_hint(cards, hint))])
+           if len(cards_revealed_by_hint(cards, hint)) == 1])
          for (player_index, cards) in other_hands_knowlege_free]
 
 def cards_held_by_player(other_hands : other_hands, player : PlayerIndex)\
         -> list[tuple[Card, Card.Knowledge]]:
-    # (type) other_hands = list[tuple[int, list[tuple[Card, Knowledge]]]]
+
     for (player_index, cards_and_knowledge) in other_hands:
         if player_index == player:
             return cards_and_knowledge
 
+    return []
+
 def does_hint_reveal_new_info(other_hands : other_hands, player : PlayerIndex, hint : HintType) -> bool:
 
-    cards_with_player = cards_held_by_player(other_hands, player)
-    cards_touched = cards_and_knowledge_touched_by_hint(cards_held_by_player, hint)
-    return False
+    cards_for_player = cards_held_by_player(other_hands, player)
+    cards_touched = cards_and_knowledge_touched_by_hint(cards_for_player, hint)
+
+    return all([(knowledge.is_fully_unknown() for (_, knowledge) in cards_touched)])
