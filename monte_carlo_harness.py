@@ -2,9 +2,10 @@
 from main import *
 import statistics
 import matplotlib.pyplot as plt
-import better_player
+import unambiguous_hinting_player
+import random_player
 
-DEFAULT_TEST_ITERATIONS = 10
+DEFAULT_TEST_ITERATIONS = 100
 
 
 def summarize(name: str, values: list[int]) -> str:
@@ -40,4 +41,5 @@ def test_harness(player_list : list[Player]):
     plt.show()
 
 
-test_harness([better_player.BetterPlayer() for _ in range(4)])
+# test_harness([random_player.RandomPlayer() for _ in range(4)])
+test_harness([unambiguous_hinting_player.Unambiguous_Hinting_Player() for _ in range(4)])
