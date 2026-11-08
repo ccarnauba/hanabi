@@ -2,7 +2,7 @@ import abc
 from collections import defaultdict, deque
 from dataclasses import dataclass
 import dataclasses
-from enum import Enum, IntEnum
+from enum import Enum, IntEnum, StrEnum
 import random
 import sys
 from typing import TypeAlias, assert_never
@@ -212,10 +212,17 @@ class Player(abc.ABC):
 
         """
 
+class GameEndReason(StrEnum):
+    Explosion  = "Explosion"
+    Empty_deck = "Empty_deck"
+    Victory    = "Victory"
+
+
 @dataclass
 class GameInfo:
-    score       : int
-    game_length : int
+    score           : int
+    game_length     : int
+    game_end_reason : GameEndReason
 
 class Game:
     def __init__(self, player_list : list[Player], verbose : bool = False, log_file: str | None = None, random_seed : int | None = None):
@@ -368,4 +375,12 @@ class Game:
             self.player_index = (self.player_index + 1) % len(self.player_list)
             self.game_length += 1
 
-        return GameInfo(self.board.score(), self.game_length)
+
+        if (self.error_allowance_remaining == 0):
+            game_end_reason = GameEndReason.Explosion
+        elif (len(self.deck.deck) == 0):
+            game_end_reason = GameEndReason.Empty_deck
+        else:
+            game_end_reason = GameEndReason.Victory
+
+        return GameInfo(self.board.score(), self.game_length, game_end_reason)

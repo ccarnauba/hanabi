@@ -1,6 +1,10 @@
-Create a gameplay loop for hanabi.
+A game simulator for Hanabi [1].
 
-The core game mechanics live in main. To use this you should define a subclass
-of Player and create a list of Player objects. That list should be passed in as
-an argument to the Game object initializer which exposes a single function play.
-Many different games can be played at the same time.
+The core game mechanics live in main.py.
+
+Gameplay analysis logic lives in monte_carlo_harness.py
+An example player is encoded in unambiguous_hinting_player.py
+
+[1] Hanabi is an asymetric information cooperative game. It has an interesting
+    mechanic where you can see everyone else's hand, but can't see your own. It's
+    fun!
