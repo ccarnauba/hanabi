@@ -241,7 +241,7 @@ class Game:
         self.discard_pile              = Discard_pile()
         self.board                     = Board()
         self.deck                      = Deck(random_seed)
-        self.player_to_draw_last_card  = None
+        self.turns_after_last_draw     = len(player_list)
         self.verbose                   = verbose
 
     def _describe_round(self, player_action : PlayerAction, other_hands : other_hands) -> None:
@@ -268,9 +268,6 @@ class Game:
 
     def _draw_card(self, player : Player) -> None:
         new_card = self.deck.draw_card()
-
-        if self.player_to_draw_last_card == None and len(self.deck.deck) == 0:
-            self.player_to_draw_last_card = self.player_index
 
         if new_card:
             player.add_card_to_hand(new_card)
@@ -348,10 +345,8 @@ class Game:
 
     def play(self) -> GameInfo:
         self._initialize_players()
-        while(self.error_allowance_remaining > 0 and not self.board.is_won()):
-
-            if self.player_index == self.player_to_draw_last_card:
-                break
+        while(self.error_allowance_remaining > 0 and not self.board.is_won()
+              and self.turns_after_last_draw >= 0):
 
             curr_player    = self.player_list[self.player_index]
             other_hands    = self._get_other_hands()
@@ -375,12 +370,15 @@ class Game:
             self.player_index = (self.player_index + 1) % len(self.player_list)
             self.game_length += 1
 
+            if not self.deck.deck:
+                self.turns_after_last_draw -= 1
 
-        if (self.error_allowance_remaining == 0):
-            game_end_reason = GameEndReason.Explosion
-        elif (len(self.deck.deck) == 0):
-            game_end_reason = GameEndReason.Empty_deck
-        else:
+
+        if (self.board.is_won()):
             game_end_reason = GameEndReason.Victory
+        elif (self.error_allowance_remaining == 0):
+            game_end_reason = GameEndReason.Explosion
+        else:
+            game_end_reason = GameEndReason.Empty_deck
 
         return GameInfo(self.board.score(), self.game_length, game_end_reason)
