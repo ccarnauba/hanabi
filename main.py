@@ -343,10 +343,15 @@ class Game:
                     case card:
                         player.add_card_to_hand(card)
 
+    def _is_game_still_running(self) -> bool:
+        """
+        True iff the game is still in a state where a player could play
+        """
+        return self.error_allowance_remaining > 0 and not self.board.is_won() and self.turns_after_last_draw > 0
+
     def play(self) -> GameInfo:
         self._initialize_players()
-        while(self.error_allowance_remaining > 0 and not self.board.is_won()
-              and self.turns_after_last_draw >= 0):
+        while self._is_game_still_running():
 
             curr_player    = self.player_list[self.player_index]
             other_hands    = self._get_other_hands()
